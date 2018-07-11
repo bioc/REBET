@@ -1,0 +1,5 @@
+import(stats)
+import(utils)
+import(ASSET)
+useDynLib(REBET, .registration = TRUE)
+export(rebet)
