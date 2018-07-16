@@ -1,6 +1,6 @@
 Package: REBET
 Title: The subREgion-based BurdEn Test (REBET)
-Version: 0.99.1
+Version: 0.99.2
 Date: 2018-07-11
 Author: Bin Zhu, Lisa Mirabello and Nilanjan Chatterjee
 Description: A subregion-based Burden test for simultaneous identification of susceptibility loci and sub-regions within.
