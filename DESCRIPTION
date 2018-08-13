@@ -1,12 +1,20 @@
 Package: REBET
 Title: The subREgion-based BurdEn Test (REBET)
-Version: 0.99.3
-Date: 2018-07-11
-Author: Bin Zhu, Lisa Mirabello and Nilanjan Chatterjee
-Description: A subregion-based Burden test for simultaneous identification of susceptibility loci and sub-regions within.
-Maintainer: Bill Wheeler <wheelerb@imsweb.com>
-Imports: stats, utils
+Version: 0.99.4
+Date: 2018-08-13
+Authors@R: c(
+    person(
+        "Bill", "Wheeler", email = "wheelerb@imsweb.com", role=c("cre")
+    ),
+    person("Bin", "Zhu", role = "aut"),
+    person("Lisa", "Mirabello", role = "ctb"),
+    person("Nilanjan", "Chatterjee", role = "ctb"))
+Description: There is an increasing focus to investigate the association between rare variants
+ and diseases. The REBET package implements the subREgion-based BurdEn Test which is a
+ powerful burden test that simultaneously identifies susceptibility loci and sub-regions.
+Import: stats, utils
 Depends: ASSET
 Suggests: RUnit, BiocGenerics
 License: GPL-2
 biocViews: Software, VariantAnnotation, SNP
+RoxygenNote: 6.0.1
