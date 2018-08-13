@@ -1,6 +1,6 @@
 Package: REBET
 Title: The subREgion-based BurdEn Test (REBET)
-Version: 0.99.4
+Version: 0.99.5
 Date: 2018-08-13
 Authors@R: c(
     person(
@@ -12,7 +12,7 @@ Authors@R: c(
 Description: There is an increasing focus to investigate the association between rare variants
  and diseases. The REBET package implements the subREgion-based BurdEn Test which is a
  powerful burden test that simultaneously identifies susceptibility loci and sub-regions.
-Import: stats, utils
+Imports: stats, utils
 Depends: ASSET
 Suggests: RUnit, BiocGenerics
 License: GPL-2
