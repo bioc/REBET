@@ -2,7 +2,7 @@ test_rebet <- function() {
 
   data(data, package="REBET")
 
-  res         <- rebet(Y, G, E)
+  res         <- rebet(response, genotypes, subRegions)
   meta.beta   <- res$Meta$beta
   side1.beta  <- res$Subset.1sided$beta
   side1.se    <- res$Subset.1sided$sd
