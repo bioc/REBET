@@ -5,159 +5,114 @@
 #X: matrix of covariates
 #a,b: parameters of beta distribution
 
-rebet <- function(Y, G, E, outcome=NULL, X=NULL, a=1, b=1, saveMem=FALSE)
+rebet <- function(response, genotypes, subRegions, responseType=NULL, 
+        covariates=NULL, shape1=1, shape2=1, saveMem=FALSE)
 {
     #need add some sanity check of parameter of REBET
-    if (!is.matrix(G)) {
-        stop("ERROR: G must be a matrix with at least two columns")
+    if (!is.matrix(genotypes)) {
+        stop("ERROR: genotypes must be a matrix with at least two columns")
     }
-    n <- nrow(G)
-    p <- ncol(G)
+    n <- nrow(genotypes)
+    p <- ncol(genotypes)
     if ((is.null(p)) || (p < 2)) {
-        stop("ERROR: G must be a matrix with at least two columns")
+        stop("ERROR: genotypes must be a matrix with at least two columns")
     }
-    E.unique <- unique(E)
-    if (p != length(E)) {
-        stop("ERROR: length of E and number of col of G must be the same")
+    E.unique <- unique(subRegions)
+    if (p != length(subRegions)) {
+        stop("ERROR: length of subRegions and number of col of genotypes must be the same")
     }
-    if (a <= 0) stop("ERROR: a must be positive")
-    if (b <= 0) stop("ERROR: b must be positive")
+    if (shape1 <= 0) stop("ERROR: shape1 must be positive")
+    if (shape2 <= 0) stop("ERROR: shape2 must be positive")
 
-    if (n != length(Y)) {
-      stop("ERROR: length of Y and number of rows of G must be the same")
+    if (n != length(response)) {
+      stop("ERROR: length of response and number of rows of genotypes must be the same")
     }
-    if (!is.null(outcome)) {
-        if (!(outcome %in% c("continuous","binary"))) {
-            stop("ERROR: outcome type must be continous, binary or NULL")
+    if (!is.null(responseType)) {
+        if (!(responseType %in% c("continuous","binary"))) {
+            stop("ERROR: responseType type must be continous, binary or NULL")
         }
     } else {
-        temp <- is.finite(Y)
-        if (all(Y[temp] %in% 0:1)) {
-          outcome <- "binary"
+        temp <- is.finite(response)
+        if (all(response[temp] %in% 0:1)) {
+          responseType <- "binary"
         } else {
-          outcome <- "continuous"
+          responseType <- "continuous"
         }
     }
-    if (is.null(X)) X <- matrix(data=1, nrow=n, ncol=1)
-    if (is.vector(X)) X <- matrix(X, ncol=1)
-    if ((!is.matrix(X)) && (!is.vector(X))) {
-        stop("ERROR: X must be a matrix or vector")
+    if (is.null(covariates)) covariates <- matrix(data=1, nrow=n, ncol=1)
+    if (is.vector(covariates)) covariates <- matrix(covariates, ncol=1)
+    if ((!is.matrix(covariates)) && (!is.vector(covariates))) {
+        stop("ERROR: covariates must be a matrix or vector")
     }
-    if (n != nrow(X)) {
-        stop("ERROR: length of Y and number of rows of X must be the same")
+    if (n != nrow(covariates)) {
+        stop("ERROR: length of response and number of rows of covariates must be the same")
     }
 
     # Remove missing values
-    temp <- (!is.finite(Y)) | (rowSums(!is.finite(G)) > 0) |
-        (rowSums(!is.finite(X)) > 0)  
+    temp <- (!is.finite(response)) | (rowSums(!is.finite(genotypes)) > 0) |
+        (rowSums(!is.finite(covariates)) > 0)  
     if (any(temp)) {
-        Y <- Y[!temp]
-        G <- G[!temp, , drop=FALSE]
-        X <- X[!temp, , drop=FALSE]
-        n <- nrow(G)
+        response <- response[!temp]
+        genotypes <- genotypes[!temp, , drop=FALSE]
+        covariates <- covariates[!temp, , drop=FALSE]
+        n <- nrow(genotypes)
     }
     if (!n) stop("ERROR: No data to process")
 
     # Add intercept if needed
-    if (all(colSums(X == 1) != n)) X <- as.matrix(cbind(1, X))
-    ncov <- ncol(X)
+    if (all(colSums(covariates == 1) != n)) covariates <- as.matrix(cbind(1, covariates))
+    ncov <- ncol(covariates)
 
-    # Local function to compute diagonal of SIGMA for continuous case
-    getSIGMA2_cont <- function() {
-
-      if (saveMem) {
-        ret <- double(p)
-        tmp <- .C("SIGMA2_cont", as.numeric(G), as.integer(n), as.integer(p), 
-               as.numeric(X), as.integer(ncov), as.numeric(inv.XtX),
-               as.numeric(tilde.sigma2), ret=ret, PACKAGE="REBET")
-        ret <- tmp$ret 
-      } else {
-        SIGMA <- Gt%*% (diag(1, n)-X %*% inv.XtX %*% t(X)) %*% G * tilde.sigma2
-        ret   <- diag(SIGMA)
-      }
-      ret
-
-    } # END: getSIGMA2_cont
-
-  # Local function to compute diagonal of SIGMA for binary case
-     getSIGMA2_binary <- function() {
-
-        if (saveMem) {
-            ret <- double(p)
-            tmp <- .C("SIGMA2_binary", as.numeric(G), as.integer(n), 
-                as.integer(p), as.numeric(X), as.integer(ncov), 
-                as.numeric(inv.XtDX),
-                as.numeric(d), ret=ret, PACKAGE="REBET")
-            ret <- tmp$ret 
-        } else {
-            SIGMA <- Gt%*%(diag(d)-(d %o% d) * (X %*% (inv.XtDX) %*% t(X)))%*%G
-            ret   <- diag(SIGMA)
-        }
-        ret
-
-    } # END: getSIGMA2_binary
-
-    # Local function to compute XtDX <- t(X)%*%D%*%X for binary case
-    getXtDX <- function() {
-
-        if (saveMem) {
-            ret <- double(ncov*ncov)
-            tmp <- .C("computeXtDX", as.numeric(X), as.numeric(d), 
-                as.integer(n), as.integer(ncov), ret=ret, PACKAGE="REBET")
-            ret <- matrix(tmp$ret, nrow=ncov, ncol=ncov)
-        } else {
-            ret <- t(X)%*%diag(d)%*%X
-        }
-        ret
-  
-    } # END: getXtDX
+    
 
     #step 1:calculate score statistics vector and its variance matrix
-    if (outcome == "continuous"){
+    if (responseType == "continuous"){
     
-        fit          <- try(lm(Y ~ X - 1))
+        fit          <- try(lm(response ~ covariates - 1))
         if ("try-error" %in% class(fit)) {
             stop("ERROR: Linear regression failed")
         }
         tilde.sigma2 <- summary(fit)$sigma^2
         res          <- fit$resid   
-        Gt           <- t(G)
+        Gt           <- t(genotypes)
         S            <- Gt %*% res 
     
-        XtX          <- t(X)%*%X
+        XtX          <- t(covariates)%*%covariates
         inv.XtX      <- try(solve(XtX))
         if ("try-error" %in% class(inv.XtX)) {
             print(summary(fit))
             stop("ERROR: matrix inversion failed")
         }
     
-        SIGMA2       <- getSIGMA2_cont() 
+        SIGMA2       <- .getSIGMA2_cont(saveMem, p, genotypes, n, covariates, ncov, 
+                        inv.XtX, tilde.sigma2, Gt) 
 
         rm(Gt, XtX, res)
         gc()
-    }else if (outcome == "binary"){
-        fit <- try(glm(formula = Y ~ X - 1, family = binomial(link = logit)))
+    }else if (responseType == "binary"){
+        fit <- try(glm(formula = response ~ covariates - 1, family = binomial(link = logit)))
         if (("try-error" %in% class(fit)) || (!fit$converged)) {
             stop("ERROR: Logistic regression failed")
         }
         mu       <- fit$fitted.value
-        res      <- Y - mu
-        Gt       <- t(G)
+        res      <- response - mu
+        Gt       <- t(genotypes)
         S        <- Gt %*% res 
         d        <- mu * (1 - mu)
-        XtDX     <- getXtDX()
+        XtDX     <- .getXtDX(saveMem, ncov, covariates, d, n)
         inv.XtDX <- try(solve(XtDX))
         if ("try-error" %in% class(inv.XtDX)) {
             print(summary(fit))
             stop("ERROR: matrix inversion failed")
         }
 
-        SIGMA2   <- getSIGMA2_binary() 
+        SIGMA2   <- .getSIGMA2_binary(saveMem, p, genotypes, n, covariates, ncov, 
+                    inv.XtDX, d, Gt) 
 
         rm(Gt, XtDX, res, d, mu)
         gc()
     } else{
-        stop("ERROR: outcome must be continous or binary")
+        stop("ERROR: responseType must be continous or binary")
     }
 
     # Check SIGMA2
@@ -165,12 +120,12 @@ rebet <- function(Y, G, E, outcome=NULL, X=NULL, a=1, b=1, saveMem=FALSE)
 
     #step 2: specify weight OMEGA
     #G.bar.star <- G.bar
-    G.bar       <- (colSums(G))/(n)
+    G.bar       <- (colSums(genotypes))/(n)
     G.bar.star  <- G.bar/2
-    OMEGA       <- dbeta(G.bar.star, shape1=a, shape2=b) 
+    OMEGA       <- dbeta(G.bar.star, shape1=shape1, shape2=shape2) 
   
     #step 3: creat input for fastASSET.R: PI_k and Z_k
-    PI_Z_kGroups <- PI_kGroups(E,S,SIGMA2,OMEGA)
+    PI_Z_kGroups <- .PI_kGroups(subRegions,S,SIGMA2,OMEGA)
  
     #step 4: run  ASSET
     snps       <- "Gene"
@@ -192,61 +147,3 @@ rebet <- function(Y, G, E, outcome=NULL, X=NULL, a=1, b=1, saveMem=FALSE)
 }
 
 
-PI_kGroups <- function(E,S,SIGMA2,OMEGA)
-{  
-    p <- length(E)
-    E.unique <- unique(E)
-    m <- length(E.unique)
-    SIGMA <- sqrt(SIGMA2)
-    S.scaled <- S/SIGMA 
-  
-    Z_k <- rep(NA,m)
-    PI_k <- rep(NA,m)
-    for(j in seq_len(m))
-    {
-        is.j <- E %in% E.unique[j]   
-        S.scaled.j <- S.scaled[is.j]
-        SIGMA.j <- SIGMA[is.j]
-        OMEGA.j <- OMEGA[is.j]
-    
-        OS.j <- OMEGA.j*SIGMA.j
-        SumOS_j2 <- sum(OS.j^2)
-        Z_k[j] <- sum(OS.j/sqrt(SumOS_j2)*S.scaled.j)
-    
-        PI_k[j] <- SumOS_j2
-    }
-    PI_k <- PI_k/sum(OMEGA^2*SIGMA2)
-    return (list(PI_k=PI_k,Z_k=Z_k))  
-}
-
-simultion1 <- function(n,p,m,prop,beta0,beta,E)
-{
-    N <- round((n/2)*1.2 / (exp(beta0)/(1+exp(beta0)))) #cohorat size
-  
-    #Simulate design matrix
-    GCohort <- matrix(0,N,p)
-  
-    for(j in seq_len(p))
-    {
-        MAF <- prop*j
-        GCohort[,j] <- rbinom(N, 2, MAF)
-    }
-  
-    #GCohort[GCohort==2] = 1
-  
-    eta <- beta0+GCohort %*% beta
-  
-    pCase <- exp(eta)/(1+exp(eta))
-  
-    YCohort <- matrix(rbinom(N,1,pCase),N,1)
-  
-    casePool <- which(YCohort==1)
-    controlPool <- which(YCohort==0)
-  
-    case <- sample(casePool, n/2)
-    control <-sample(controlPool,n/2) 
-  
-    G <- rbind(GCohort[case,],GCohort[control,])
-    Y <- YCohort[c(case,control),]
-    return(list(Y=Y, G=G))
-}
