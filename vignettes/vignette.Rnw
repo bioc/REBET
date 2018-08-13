@@ -3,12 +3,16 @@
 %\VigetteDepends{REBET}
 
 \documentclass[a4paper]{article}
-
+%\usepackage{url}
 
 \begin{document}
 
 \title{REBET (subREgion-based BurdEn Test)}
 \maketitle
+
+\tableofcontents
+\newpage
+
 
 \section*{Introduction}
 There is an increasing focus to investigate the association between rare variants
@@ -44,12 +48,29 @@ involved in the sub-region search. For detecting overall association for a gene,
 REBET has robust power when risk effects are relatively homogeneous
  within sub-regions, but potentially heterogeneous across sub-regions.  
 
+\section{Installation}
+Steps for installing and loading the REBET package: \newline 
+1. Download the package from Bioconductor. \newline
+ \indent if (!requireNamespace("BiocManager", quietly = TRUE)) \newline
+ \indent \indent  install.packages("BiocManager") \newline
+ \indent  BiocManager::install("REBET") 
+
+
+\subsection{Installation of the developmental version from Github}
+ devtools::install\_github("$\mbox{wheelerb/REBET}$") \newline 
+
+\noindent 2. Load the package into an R session.
 <<start>>=
 library(REBET)
 @
 
-\section*{Example}
-
+\section{Example}
+The REBET package requires the user to have the genotype data in memory in the
+form of a matrix. However, much imputed genotype data exists in large 
+compressed files. In this example, we will have all of the data in
+external files and create the data objects we need for the rebet function.
+The genotype data is stored in an output file created from the IMPUTE2 
+software, and the phenotype data is stored is a tab delimted text file. 
 Get the paths to the data files.
 <<geno file>>=
 genofile  <- system.file("sampleData", "geno_impute.txt.gz", package="REBET")
@@ -187,7 +208,7 @@ Define the response vector, matrix of covariates, and call the rebet function.
 <<rebet>>=
 Y   <- as.numeric(data[, "Response"])
 X   <- as.matrix(data[, c("Age", "MALE")])
-ret <- rebet(Y, G, E, X=X)
+ret <- rebet(Y, G, E, covariates=X)
 @
 
 The result summary shows that sub-region SR3 is highly significant.
@@ -196,7 +217,7 @@ print(h.summary(ret))
 @
 
 
-\section*{Session Information}
+\section{Session Information}
 <<sessionInfo>>=
 sessionInfo()
 @ 
