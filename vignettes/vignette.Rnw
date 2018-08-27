@@ -49,17 +49,17 @@ REBET has robust power when risk effects are relatively homogeneous
  within sub-regions, but potentially heterogeneous across sub-regions.  
 
 \section{Installation}
-Steps for installing and loading the REBET package: \newline 
-1. Download the package from Bioconductor. \newline
+Installing the REBET package from Bioconductor or Github.
+\subsection{Install from Bioconductor}
  \indent if (!requireNamespace("BiocManager", quietly = TRUE)) \newline
  \indent \indent  install.packages("BiocManager") \newline
- \indent  BiocManager::install("REBET") 
+BiocManager::install("REBET") 
 
-
-\subsection{Installation of the developmental version from Github}
+\subsection{Install the developmental version from Github}
  devtools::install\_github("$\mbox{wheelerb/REBET}$") \newline 
 
-\noindent 2. Load the package into an R session.
+\section{Loading the package}
+Before using the REBET package, it must be loaded into an R session.
 <<start>>=
 library(REBET)
 @
@@ -78,49 +78,61 @@ subfile   <- system.file("sampleData", "subjects.txt.gz", package="REBET")
 phenofile <- system.file("sampleData", "pheno.txt.gz", package="REBET")
 @
 
-Read in the phenotype data containing the response, covariates, and
-subject ids. 
+\subsection{Phenotype data}
+The phenotype data file contains the response, covariates, and
+subject ids that we need for the analysis. In this file, the outcome 
+variable is a column called "Response", the subject id variable 
+is called "Subject", and we will adjust for variables
+"Age" and "Gender". First, we will read in the data and look at the first five rows.
 <<pheno data>>=
 data <- read.table(phenofile, header=1, sep="\t")
 data[1:5, ]
 @
 
-Our model will be adjusted for age and gender. Let us add a dummy variable
-for gender.
+Notice that the gender variable "Gender" is a character variable, so we need
+to create a dummy variable for gender.
 <<add dummy var>>=
 data[, "MALE"] <- as.numeric(data[, "Gender"] %in% "MALE")
 @
 
-For out analysis, we are only interested in the four sub-regions of chromosome 7
-defined below.
+\subsection{Sub-regions}
+For our analysis, we will only consider the four sub-regions of chromosome 7
+defined below. These regions of interest are protein binding regions, and we
+will name them "SR1", "SR2", "SR3", and "SR4".
 <<sub-regions>>=
 subRegions <- rbind(c(87654800, 87661050),
                     c(87661051, 87668870),
                     c(87668871, 87671945),
                     c(87671946, 87673200))
+rownames(subRegions) <- paste("SR", 1:4, sep="")
 subRegions
 @
 
-We will use the minimum and maximum positions when the genotype data is read.
+Since we are only looking at these four sub regions, we will use the minimum and maximum 
+positions of these sub regions when the genotype data is read.
 <<min max pos>>=
 min.loc <- min(subRegions)
 max.loc <- max(subRegions)
 @
 
-We also need the subject order for the genotype data. These ids are in the file 
-subfile. Let us read in the genotype subject ids.
+\subsection{Genotype subject ids}
+The genotype data does not contain subject ids - the subject ids are stored in 
+a separate file that gives the order of the subjects in the genotype data.
+ We will read in this file of genotype subject ids so that we 
+can match the genotype data with the phenotype data.
 <<subject file>>=
 geno.subs  <- scan(subfile, what="character")
 @
 
 The set and order of subjects may not be the same in the phenotype and genotype
-data. We need the common set of subject and the correct order.
-<<>>=
+data. We need the common set of subjects and the correct order.
+<<match ids>>=
 tmp   <- data[, "Subject"] %in% geno.subs
 data  <- data[tmp, ]
 order <- match(data[, "Subject"], geno.subs)
 @
 
+\subsection{Genotype data}
 The genotype data is in a file created from the IMPUTE2 software. 
 Each row of this file has the form:
  Snpid RSid Position A1 A2 $P1_1 P1_2 P1_3 P2_1 P2_2 P2_3 ...$
@@ -148,6 +160,7 @@ id2 <- id1 + 1
 id3 <- id1 + 2
 @
 
+\subsection{Reading the genotype data}
 Now we are ready to open the genotype file and read it row by row.
 In the code below, we are only going to store the variants that are
 between the min.loc and max.loc defined above. For such variants, we compute
@@ -192,26 +205,37 @@ locs <- locs[1:index]
 colnames(G) <- snps
 @
 
-The rebet function requires a vector of sub-region names for the variants
-in matrix G. The sub-region names will be SR1-SR4 and will be stored in the 
-vector E.
-<<assign sub-region names>>=
+\subsection{Input arguments to rebet}
+The rebet function requires a vector for the response, a matrix of genotypes,
+a vector of sub-region names for the variants, and optionally a matrix of adjusted covariates.
+The matrix of genotypes is G, which was created above.
+Create the response vector Y and matrix of covariates X.
+<<Y and X>>=
+Y   <- as.numeric(data[, "Response"])
+X   <- as.matrix(data[, c("Age", "MALE")])
+@
+
+Now create the vector E of sub-region names for each variant in the genotype matrix G.
+Recall that each row of the matrix subRegions created above defins a sub-region, and that
+the rownames of this matrix give the sub-region name.  
+<<E>>=
 E <- rep("", index)
 for (i in 1:nrow(subRegions)) {
   tmp <- (locs >= subRegions[i, 1]) & (locs <= subRegions[i, 2])
   tmp[is.na(tmp)] <- FALSE
-  if (any(tmp)) E[tmp] <- paste("SR", i, sep="")
+  if (any(tmp)) E[tmp] <- rownames(subRegions)[i]
 }
 @
 
-Define the response vector, matrix of covariates, and call the rebet function.
-<<rebet>>=
-Y   <- as.numeric(data[, "Response"])
-X   <- as.matrix(data[, c("Age", "MALE")])
+\subsection{Calling rebet and summarizing results}
+With all of the input arguments being defined, the rebet function can be called.
+<<call rebet>>=
 ret <- rebet(Y, G, E, covariates=X)
 @
 
-The result summary shows that sub-region SR3 is highly significant.
+The returned object from rebet is summarized using the h.summary function in
+the ASSET package.
+The resulting summary shows that sub-region SR3 is highly significant.
 <<rebet summary>>=
 print(h.summary(ret))
 @
