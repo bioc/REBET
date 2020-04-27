@@ -1,6 +1,6 @@
 Package: REBET
 Title: The subREgion-based BurdEn Test (REBET)
-Version: 1.5.0
+Version: 1.6.0
 Date: 2018-08-13
 Authors@R: c(
     person(
