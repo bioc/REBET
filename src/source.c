@@ -11,6 +11,11 @@
 #include <R_ext/Rdynload.h>
 
 #define CHECK_MEM(obj) if (obj == NULL) {error("Memory");}
+/*
+TYPE* Calloc(size_t N, TYPE);
+TYPE* Realloc(ANY *P, size_t N, TYPE);
+void Free(ANY *P);
+*/
 
 void SIGMA2_cont(double*, int*, int*, double*, int*, double*, double*, double*);
 void SIGMA2_binary(double*, int*, int*, double*, int*, double*, double*, double*);
@@ -55,9 +60,7 @@ char name[10];
 
 
 /* Function to allocate memory for a double vector */
-static double * dVec_alloc(n, initFlag, initVal)
-int n, initFlag;
-double initVal;
+static double * dVec_alloc(int n, int initFlag, double initVal)
 {
   int i;
   double *ret, *p;
@@ -73,9 +76,7 @@ double initVal;
 } /* END: dVec_alloc */
 
 /* Function to allocate an integer matrix */
-static double ** dMat_alloc(nrow, ncol, initFlag, initVal)
-int nrow, ncol, initFlag;
-double initVal;
+static double ** dMat_alloc(int nrow, int ncol, int initFlag, double initVal)
 {
   double **mat, **ptr;
   int i;
@@ -89,9 +90,7 @@ double initVal;
 } /* END: dMat_alloc */
 
 /* Function to free a matrix */
-static void matrix_free(x, n)
-void **x;
-int n;
+static void matrix_free(void **x, int n)
 {
   int i;
   for (i=0; i<n; i++) {
@@ -102,10 +101,9 @@ int n;
 } /* END: matrix_free */
 
 /* Function to put a vector (stacked by column) into a matrix */
-static void vecIntoMat(vec, nrow, ncol, ret)
-double *vec;  /* length nrow*ncol stacked by column */
-double **ret; /* dimension nrow x ncol */
-int nrow, ncol;
+static void vecIntoMat(double *vec, int nrow, int ncol, double **ret)
+/* vec: length nrow*ncol stacked by column */
+/* ret: dimension nrow x ncol */
 {
   int i, j;
   double *pvec;
@@ -120,9 +118,7 @@ int nrow, ncol;
 } /* END: vecIntoMat */
 
 /* Multiply matrices (stacked by columns) */
-static void mult_stVec_stVec(X, invXtX, n, m, ret)
-double *X, *invXtX, **ret;
-int n, m;
+static void mult_stVec_stVec(double *X, double *invXtX, int n, int m, double **ret)
 {
   int i, j, k, index1, index2;
   double sum, *p2;
@@ -146,9 +142,7 @@ int n, m;
 } /* END: mult_stVec_stVec */
 
 /* Multiply (elementwise) a column of a matrix (stacked vector) by a scalar */
-static void mult_stVec_scalar(X, n, col, c, ret)
-double *X, c, *ret;
-int n, col;
+static void mult_stVec_scalar(double *X, int n, int col, double c, double *ret)
 {
   int i;
   double *p, *pret;
@@ -162,11 +156,10 @@ int n, col;
 
 /* Multiply vector by the transpose of a matrix(stacked by columns)
    and store result in a vector */
-static void mult_vec_TstVec(vec, TstVec, n, m, ret)
-double *vec;    /* Vector of length m */
-double *TstVec; /* A stacked vector (of columns) for the transpose of an nxm matrix  */
-double *ret;    /* Return vector of length n */
-int n, m;     
+static void mult_vec_TstVec(double *vec, double *TstVec, int n, int m, double *ret)
+/* vec: Vector of length m */
+/* TstVec: A stacked vector (of columns) for the transpose of an nxm matrix  */
+/* ret: Return vector of length n */     
 {
   int i, k, index;
   double sum, *p1, *pret;
@@ -186,9 +179,7 @@ int n, m;
 } /* END: mult_vec_TstVec */
 
 /* Dot product of 2 vectors */
-static double dotProd(v1, v2, n)
-double *v1, *v2;
-int n;
+static double dotProd(double *v1, double *v2, int n)
 {
   int i;
   double sum=0.0, *p1, *p2;
@@ -202,15 +193,16 @@ int n;
 /* Function to compute the diagonal elements of
   SIGMA <- Gt%*% (diag(1, n) - X %*% inv.XtX %*% t(X)) %*% G * tilde.sigma2
 */
-void SIGMA2_cont(G, p_nsub, p_nsnp, X, p_ncov, invXtX, p_tildeSigma, ret)
-double *G;            /* Stacked vector of genotype matrix (columns stacked) */
-int *p_nsub;          /* Number of subjects */
-int *p_nsnp;          /* Number of snps */
-double *X;            /* Stacked vector of covariate matrix (columns stacked) */
-int *p_ncov;          /* Number of covariates */
-double *invXtX;       /* Stacked vector of XtX^-1 matrix (columns stacked) */
-double *p_tildeSigma; /* Variance */
-double *ret;          /* Return vector of length nsnp */
+void SIGMA2_cont(double *G, int *p_nsub, int *p_nsnp, double *X, int *p_ncov, double *invXtX, 
+    double *p_tildeSigma, double *ret)
+/* G: Stacked vector of genotype matrix (columns stacked) */
+/* p_nsub: Number of subjects */
+/* p_nsnp: Number of snps */
+/* X: Stacked vector of covariate matrix (columns stacked) */
+/* p_ncov: Number of covariates */
+/* invXtX: Stacked vector of XtX^-1 matrix (columns stacked) */
+/* p_tildeSigma: Variance */
+/* ret: Return vector of length nsnp */
 {
   int nsnp, nsub, ncov, index, row, i, cov1Flag;
   double **XinvXtX, *Gsigma2, *tvec2, sum, tildeSigma2, temp, *p;
@@ -294,15 +286,16 @@ double *ret;          /* Return vector of length nsnp */
 /* Function to compute the diagonal elements of
   SIGMA <- Gt %*% (D - (d %o% d) * (X %*% (inv.XtDX) %*% t(X))) %*% G
 */
-void SIGMA2_binary(G, p_nsub, p_nsnp, X, p_ncov, invXtX, d, ret)
-double *G;            /* Stacked vector of genotype matrix (columns stacked) */
-int *p_nsub;          /* Number of subjects */
-int *p_nsnp;          /* Number of snps */
-double *X;            /* Stacked vector of covariate matrix (columns stacked) */
-int *p_ncov;          /* Number of covariates */
-double *invXtX;       /* Stacked vector of XtX^-1 matrix (columns stacked) */
-double *d;            /* mu*(1-mu) */
-double *ret;          /* Return vector of length nsnp */
+void SIGMA2_binary(double *G, int *p_nsub, int *p_nsnp, double *X, int *p_ncov, double *invXtX, 
+    double *d, double *ret)
+/* G: Stacked vector of genotype matrix (columns stacked) */
+/* p_nsub: Number of subjects */
+/* p_nsnp: Number of snps */
+/* X: Stacked vector of covariate matrix (columns stacked) */
+/* p_ncov: Number of covariates */
+/* invXtX: Stacked vector of XtX^-1 matrix (columns stacked) */
+/* d: mu*(1-mu) */
+/* ret: Return vector of length nsnp */
 {
   int nsnp, nsub, ncov, index, row, i, cov1Flag;
   double **XinvXtX, *Gcol, *tvec2, sum, temp, *p1, *p2;
@@ -385,9 +378,8 @@ double *ret;          /* Return vector of length nsnp */
 } /* END: SIGMA2_binary */
 
 /* Function to compute XtDX <- t(X)%*%D%*%X, D=diag(d) */
-void computeXtDX(X, d, p_nsub, p_ncov, ret)
-double *X, *d, *ret; /* ret should be ncov*ncov */
-int *p_nsub, *p_ncov;
+void computeXtDX(double *X, double *d, int *p_nsub, int *p_ncov, double *ret)
+/* ret should be ncov*ncov */
 {
   int i, j, k, nsub, ncov;
   double **Xmat, sum;
