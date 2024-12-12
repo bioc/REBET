@@ -65,7 +65,7 @@ static double * dVec_alloc(int n, int initFlag, double initVal)
   int i;
   double *ret, *p;
 
-  ret = (double *) Calloc(n, double);
+  ret = (double *) R_alloc(n, sizeof(double));
   CHECK_MEM(ret);
   if (initFlag) {
     for (i=0, p=ret; i<n; i++, p++) *p = initVal;
@@ -81,7 +81,7 @@ static double ** dMat_alloc(int nrow, int ncol, int initFlag, double initVal)
   double **mat, **ptr;
   int i;
 
-  mat = (double **) Calloc(nrow, double *);
+  mat = (double **) R_alloc(nrow, sizeof(double *));
   CHECK_MEM(mat);
   for (i=0, ptr=mat; i<nrow; i++, ptr++) *ptr = dVec_alloc(ncol, initFlag, initVal);
 
@@ -94,9 +94,9 @@ static void matrix_free(void **x, int n)
 {
   int i;
   for (i=0; i<n; i++) {
-    if (x[i]) Free(x[i]);
+    if (x[i]) R_Free(x[i]);
   }
-  Free(x);
+  R_Free(x);
 
 } /* END: matrix_free */
 
@@ -276,8 +276,8 @@ void SIGMA2_cont(double *G, int *p_nsub, int *p_nsnp, double *X, int *p_ncov, do
   }
 
   if (!cov1Flag) matrix_free((void **)XinvXtX, nsub);
-  Free(Gsigma2);
-  Free(tvec2);
+  R_Free(Gsigma2);
+  R_Free(tvec2);
 
   return;
 
@@ -371,7 +371,7 @@ void SIGMA2_binary(double *G, int *p_nsub, int *p_nsnp, double *X, int *p_ncov, 
   }
 
   if (!cov1Flag) matrix_free((void **)XinvXtX, nsub);
-  Free(tvec2);
+  R_Free(tvec2);
 
   return;
 
